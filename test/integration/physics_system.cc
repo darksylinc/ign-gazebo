@@ -52,6 +52,7 @@
 #include "ignition/gazebo/components/Name.hh"
 #include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/ReferenceModels.hh"
 #include "ignition/gazebo/components/Static.hh"
 #include "ignition/gazebo/components/Visual.hh"
 #include "ignition/gazebo/components/World.hh"
@@ -417,6 +418,9 @@ TEST_F(PhysicsSystemFixture, CreateRuntime)
   ecm->CreateComponent(linkEntity, components::Pose(math::Pose3d::Zero));
   ecm->CreateComponent(linkEntity, components::Name("link"));
   ecm->CreateComponent(modelEntity, components::ModelCanonicalLink(linkEntity));
+  components::ReferenceModelsInfo refModelsInfo;
+  refModelsInfo.AddModel(modelEntity);
+  ecm->CreateComponent(linkEntity, components::ReferenceModels(refModelsInfo));
 
   math::MassMatrix3d massMatrix;
   massMatrix.SetMass(1.0);
@@ -1315,7 +1319,7 @@ TEST_F(PhysicsSystemFixture, NestedModelIndividualCanonicalLinks)
   server.AddSystem(testSystem.systemPtr);
   const size_t iters = 500;
   server.Run(true, iters, false);
-  EXPECT_EQ(3u, postUpModelPoses.size());
+  EXPECT_EQ(6u, postUpModelPoses.size());
 
   auto modelIt = postUpModelPoses.find("model_00");
   EXPECT_NE(postUpModelPoses.end(), modelIt);
@@ -1334,4 +1338,19 @@ TEST_F(PhysicsSystemFixture, NestedModelIndividualCanonicalLinks)
   modelIt = postUpModelPoses.find("model_01");
   EXPECT_NE(postUpModelPoses.end(), modelIt);
   EXPECT_NEAR(zExpected, modelIt->second.Z(), 1e-2);
+
+  // model_10, model_11 and model_12 share the same canonical link (link_11),
+  // which is a floating link. So, link_11 should fall due to gravity, which
+  // also means that the frames for model_10, model_11 and model_12 should fall
+  auto model10It = postUpModelPoses.find("model_10");
+  EXPECT_NE(postUpModelPoses.end(), model10It);
+  EXPECT_NEAR(zExpected, model10It->second.Z(), 1e-2);
+  auto model11It = postUpModelPoses.find("model_11");
+  EXPECT_NE(postUpModelPoses.end(), model11It);
+  auto model12It = postUpModelPoses.find("model_12");
+  EXPECT_NE(postUpModelPoses.end(), model12It);
+  // (since model_11 and model_12 are nested, their poses are computed w.r.t.
+  // model_10)
+  EXPECT_DOUBLE_EQ(0.0, model11It->second.Z());
+  EXPECT_DOUBLE_EQ(0.0, model12It->second.Z());
 }

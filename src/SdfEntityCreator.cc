@@ -59,6 +59,7 @@
 #include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Physics.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/ReferenceModels.hh"
 #include "ignition/gazebo/components/RgbdCamera.hh"
 #include "ignition/gazebo/components/Scene.hh"
 #include "ignition/gazebo/components/SelfCollide.hh"
@@ -405,6 +406,21 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Model *_model,
     {
       this->dataPtr->ecm->CreateComponent(
           modelEntity, components::ModelCanonicalLink(canonicalLinkEntity));
+
+      // Map this canonical link to the model. Since a link may be the
+      // canonical link for multiple models (example: nested models), create
+      // a component that completes this mapping if it doesn't already exist.
+      if (!this->dataPtr->ecm->Component<components::ReferenceModels>(
+            canonicalLinkEntity))
+      {
+        components::ReferenceModelsInfo compInfo;
+        this->dataPtr->ecm->CreateComponent(canonicalLinkEntity,
+            components::ReferenceModels(compInfo));
+      }
+      auto refModelComp =
+        this->dataPtr->ecm->Component<components::ReferenceModels>(
+            canonicalLinkEntity);
+      refModelComp->Data().AddModel(modelEntity);
     }
     else
     {

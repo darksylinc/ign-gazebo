@@ -47,6 +47,8 @@
 #include "ignition/gazebo/components/ParentLinkName.hh"
 #include "ignition/gazebo/components/Physics.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/ReferenceModels.hh"
+#include "ignition/gazebo/components/Scene.hh"
 #include "ignition/gazebo/components/Transparency.hh"
 #include "ignition/gazebo/components/Visibility.hh"
 #include "ignition/gazebo/components/Visual.hh"
@@ -142,22 +144,26 @@ TEST_F(SdfEntityCreatorTest, CreateEntities)
 
   // Check models
   unsigned int modelCount{0};
+  unsigned int canonicalLinkMapChecks{0};
   Entity boxModelEntity = kNullEntity;
   Entity cylModelEntity = kNullEntity;
   Entity sphModelEntity = kNullEntity;
   Entity capModelEntity = kNullEntity;
   Entity ellipModelEntity = kNullEntity;
   this->ecm.Each<components::Model,
+           components::ModelCanonicalLink,
            components::Pose,
            components::ParentEntity,
            components::Name>(
     [&](const Entity &_entity,
         const components::Model *_model,
+        const components::ModelCanonicalLink *_canonicalLink,
         const components::Pose *_pose,
         const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _model);
+      EXPECT_NE(nullptr, _canonicalLink);
       EXPECT_NE(nullptr, _pose);
       EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
@@ -173,6 +179,17 @@ TEST_F(SdfEntityCreatorTest, CreateEntities)
             _pose->Data());
         EXPECT_EQ("box", _name->Data());
         boxModelEntity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(1u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
       }
       else if (modelCount == 2)
       {
@@ -180,6 +197,17 @@ TEST_F(SdfEntityCreatorTest, CreateEntities)
             _pose->Data());
         EXPECT_EQ("cylinder", _name->Data());
         cylModelEntity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(1u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
       }
       else if (modelCount == 3)
       {
@@ -187,6 +215,17 @@ TEST_F(SdfEntityCreatorTest, CreateEntities)
             _pose->Data());
         EXPECT_EQ("sphere", _name->Data());
         sphModelEntity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(1u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
       }
       else if (modelCount == 4)
       {
@@ -194,6 +233,17 @@ TEST_F(SdfEntityCreatorTest, CreateEntities)
             _pose->Data());
         EXPECT_EQ("capsule", _name->Data());
         capModelEntity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(1u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
       }
       else if (modelCount == 5)
       {
@@ -201,11 +251,23 @@ TEST_F(SdfEntityCreatorTest, CreateEntities)
             _pose->Data());
         EXPECT_EQ("ellipsoid", _name->Data());
         ellipModelEntity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(1u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
       }
       return true;
     });
 
   EXPECT_EQ(5u, modelCount);
+  EXPECT_EQ(5u, canonicalLinkMapChecks);
   EXPECT_NE(kNullEntity, boxModelEntity);
   EXPECT_NE(kNullEntity, cylModelEntity);
   EXPECT_NE(kNullEntity, sphModelEntity);
@@ -666,6 +728,226 @@ TEST_F(SdfEntityCreatorTest, CreateEntities)
     });
 
   EXPECT_EQ(1u, lightCount);
+}
+
+/////////////////////////////////////////////////
+TEST_F(SdfEntityCreatorTest, CreateNestedModels)
+{
+  EXPECT_EQ(0u, this->ecm.EntityCount());
+
+  // SdfEntityCreator
+  SdfEntityCreator creator(this->ecm, evm);
+
+  // Load SDF file
+  sdf::Root root;
+  root.Load(std::string(PROJECT_SOURCE_PATH) +
+      "/test/worlds/nested_model_canonical_link.sdf");
+  ASSERT_EQ(1u, root.WorldCount());
+
+  // Create entities
+  creator.CreateEntities(root.WorldByIndex(0));
+
+  // Check component types
+  EXPECT_TRUE(this->ecm.HasComponentType(components::World::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::Model::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::CanonicalLink::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::Link::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::Collision::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::Visual::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::Name::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::ParentEntity::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::Geometry::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::Material::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::Inertial::typeId));
+  EXPECT_TRUE(this->ecm.HasComponentType(components::Scene::typeId));
+
+  // Check entities
+  // 1 x world + 6 x model + 4 x link + 4 x collision + 4 x visual
+  EXPECT_EQ(19u, this->ecm.EntityCount());
+
+  // Check worlds
+  unsigned int worldCount{0};
+  Entity worldEntity = kNullEntity;
+  this->ecm.Each<components::World,
+           components::Name,
+           components::Physics>(
+    [&](const Entity &_entity,
+        const components::World *_world,
+        const components::Name *_name,
+        const components::Physics *_physics)->bool
+    {
+      EXPECT_NE(nullptr, _world);
+      EXPECT_NE(nullptr, _name);
+      EXPECT_NE(nullptr, _physics);
+
+      EXPECT_EQ("nested_model_world", _name->Data());
+      EXPECT_DOUBLE_EQ(0.001, _physics->Data().MaxStepSize());
+      EXPECT_DOUBLE_EQ(1.0, _physics->Data().RealTimeFactor());
+
+      worldCount++;
+
+      worldEntity = _entity;
+      return true;
+    });
+
+  EXPECT_EQ(1u, worldCount);
+  EXPECT_NE(kNullEntity, worldEntity);
+
+  // Check models
+  unsigned int modelCount{0};
+  unsigned int canonicalLinkMapChecks{0};
+  Entity groundBoxEntity = kNullEntity;
+  Entity model00Entity = kNullEntity;
+  Entity model01Entity = kNullEntity;
+  Entity model10Entity = kNullEntity;
+  Entity model11Entity = kNullEntity;
+  Entity model12Entity = kNullEntity;
+  this->ecm.Each<components::Model,
+           components::ModelCanonicalLink,
+           components::Pose,
+           components::ParentEntity,
+           components::Name>(
+    [&](const Entity &_entity,
+        const components::Model *_model,
+        const components::ModelCanonicalLink *_canonicalLink,
+        const components::Pose *_pose,
+        const components::ParentEntity *_parent,
+        const components::Name *_name)->bool
+    {
+      EXPECT_NE(nullptr, _model);
+      EXPECT_NE(nullptr, _canonicalLink);
+      EXPECT_NE(nullptr, _pose);
+      EXPECT_NE(nullptr, _parent);
+      EXPECT_NE(nullptr, _name);
+
+      modelCount++;
+
+      if (modelCount == 1)
+      {
+        EXPECT_EQ("ground_box", _name->Data());
+        EXPECT_EQ(worldEntity, _parent->Data());
+        EXPECT_EQ(worldEntity, this->ecm.ParentEntity(_entity));
+        groundBoxEntity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(1u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
+      }
+      else if (modelCount == 2)
+      {
+        EXPECT_EQ("model_00", _name->Data());
+        EXPECT_EQ(worldEntity, _parent->Data());
+        EXPECT_EQ(worldEntity, this->ecm.ParentEntity(_entity));
+        model00Entity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(1u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
+      }
+      else if (modelCount == 3)
+      {
+        EXPECT_EQ("model_01", _name->Data());
+        EXPECT_EQ(model00Entity, _parent->Data());
+        EXPECT_EQ(model00Entity, this->ecm.ParentEntity(_entity));
+        model01Entity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(1u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
+      }
+      else if (modelCount == 4)
+      {
+        EXPECT_EQ("model_10", _name->Data());
+        EXPECT_EQ(worldEntity, _parent->Data());
+        EXPECT_EQ(worldEntity, this->ecm.ParentEntity(_entity));
+        model10Entity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        // (the canonical link for this model is shared between
+        // model_10, model_11 and model_12)
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(3u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
+      }
+      else if (modelCount == 5)
+      {
+        EXPECT_EQ("model_11", _name->Data());
+        EXPECT_EQ(model10Entity, _parent->Data());
+        EXPECT_EQ(model10Entity, this->ecm.ParentEntity(_entity));
+        model11Entity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        // (the canonical link for this model is shared between
+        // model_10, model_11 and model_12)
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(3u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
+      }
+      else if (modelCount == 6)
+      {
+        EXPECT_EQ("model_12", _name->Data());
+        EXPECT_EQ(model11Entity, _parent->Data());
+        EXPECT_EQ(model11Entity, this->ecm.ParentEntity(_entity));
+        model12Entity = _entity;
+
+        // make sure there's a mapping of the model's canonical link to model
+        // (the canonical link for this model is shared between
+        // model_10, model_11 and model_12)
+        auto linkMapComp = this->ecm.Component<components::ReferenceModels>(
+            _canonicalLink->Data());
+        if (linkMapComp)
+        {
+          const auto &mapping = linkMapComp->Data().models;
+          EXPECT_EQ(3u, mapping.size());
+          EXPECT_TRUE(mapping.find(_entity) != mapping.end());
+          canonicalLinkMapChecks++;
+        }
+      }
+
+      return true;
+    });
+
+  EXPECT_EQ(6u, modelCount);
+  EXPECT_EQ(6u, canonicalLinkMapChecks);
+  EXPECT_NE(kNullEntity, groundBoxEntity);
+  EXPECT_NE(kNullEntity, model00Entity);
+  EXPECT_NE(kNullEntity, model01Entity);
+  EXPECT_NE(kNullEntity, model10Entity);
+  EXPECT_NE(kNullEntity, model11Entity);
+  EXPECT_NE(kNullEntity, model12Entity);
 }
 
 /////////////////////////////////////////////////

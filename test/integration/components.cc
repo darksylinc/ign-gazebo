@@ -70,6 +70,7 @@
 #include "ignition/gazebo/components/PerformerLevels.hh"
 #include "ignition/gazebo/components/PhysicsEnginePlugin.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/ReferenceModels.hh"
 #include "ignition/gazebo/components/Scene.hh"
 #include "ignition/gazebo/components/Sensor.hh"
 #include "ignition/gazebo/components/SourceFilePath.hh"
@@ -1192,6 +1193,98 @@ TEST_F(ComponentsTest, ParentLinkName)
   EXPECT_EQ("comp3", comp3.Data());
 }
 
+//////////////////////////////////////////////////
+TEST_F(ComponentsTest, ParticleEmitter)
+{
+  msgs::ParticleEmitter emitter1;
+  emitter1.set_name("emitter1");
+  emitter1.set_id(0);
+  emitter1.set_type(ignition::msgs::ParticleEmitter_EmitterType_BOX);
+  emitter1.mutable_size()->set_x(1);
+  emitter1.mutable_size()->set_y(2);
+  emitter1.mutable_size()->set_z(3);
+  emitter1.mutable_rate()->set_data(4.0);
+  emitter1.mutable_duration()->set_data(5.0);
+  emitter1.mutable_emitting()->set_data(false);
+  emitter1.mutable_particle_size()->set_x(0.1);
+  emitter1.mutable_particle_size()->set_y(0.2);
+  emitter1.mutable_particle_size()->set_z(0.3);
+  emitter1.mutable_lifetime()->set_data(6.0);
+  emitter1.mutable_min_velocity()->set_data(7.0);
+  emitter1.mutable_max_velocity()->set_data(8.0);
+  emitter1.mutable_color_start()->set_r(1.0);
+  emitter1.mutable_color_start()->set_g(0);
+  emitter1.mutable_color_start()->set_b(0);
+  emitter1.mutable_color_start()->set_a(0);
+  emitter1.mutable_color_end()->set_r(1.0);
+  emitter1.mutable_color_end()->set_g(1.0);
+  emitter1.mutable_color_end()->set_b(1.0);
+  emitter1.mutable_color_end()->set_a(0);
+  emitter1.mutable_scale_rate()->set_data(9.0);
+  emitter1.mutable_color_range_image()->set_data("path_to_texture");
+
+  msgs::ParticleEmitter emitter2;
+  emitter2.set_name("emitter2");
+  emitter2.set_id(1);
+  emitter2.set_type(ignition::msgs::ParticleEmitter_EmitterType_BOX);
+  emitter2.mutable_size()->set_x(1);
+  emitter2.mutable_size()->set_y(2);
+  emitter2.mutable_size()->set_z(3);
+  emitter2.mutable_rate()->set_data(4.0);
+  emitter2.mutable_duration()->set_data(5.0);
+  emitter2.mutable_emitting()->set_data(false);
+  emitter2.mutable_particle_size()->set_x(0.1);
+  emitter2.mutable_particle_size()->set_y(0.2);
+  emitter2.mutable_particle_size()->set_z(0.3);
+  emitter2.mutable_lifetime()->set_data(6.0);
+  emitter2.mutable_min_velocity()->set_data(7.0);
+  emitter2.mutable_max_velocity()->set_data(8.0);
+  emitter2.mutable_color_start()->set_r(1.0);
+  emitter2.mutable_color_start()->set_g(0);
+  emitter2.mutable_color_start()->set_b(0);
+  emitter2.mutable_color_start()->set_a(0);
+  emitter2.mutable_color_end()->set_r(1.0);
+  emitter2.mutable_color_end()->set_g(1.0);
+  emitter2.mutable_color_end()->set_b(1.0);
+  emitter2.mutable_color_end()->set_a(0);
+  emitter2.mutable_scale_rate()->set_data(9.0);
+  emitter2.mutable_color_range_image()->set_data("path_to_texture");
+
+  // Create components.
+  auto comp1 = components::ParticleEmitter(emitter1);
+  auto comp2 = components::ParticleEmitter(emitter2);
+
+  // Stream operators.
+  std::ostringstream ostr;
+  comp1.Serialize(ostr);
+
+  std::istringstream istr(ostr.str());
+  components::ParticleEmitter comp3;
+  comp3.Deserialize(istr);
+  EXPECT_EQ(comp1.Data().id(), comp3.Data().id());
+}
+
+//////////////////////////////////////////////////
+TEST_F(ComponentsTest, ParticleEmitterCmd)
+{
+  msgs::ParticleEmitter emitter1;
+  emitter1.set_name("emitter1");
+  emitter1.mutable_emitting()->set_data(true);
+
+  // Create components.
+  auto comp1 = components::ParticleEmitterCmd(emitter1);
+
+  // Stream operators.
+  std::ostringstream ostr;
+  comp1.Serialize(ostr);
+
+  std::istringstream istr(ostr.str());
+  components::ParticleEmitter comp3;
+  comp3.Deserialize(istr);
+  EXPECT_EQ(comp1.Data().emitting().data(), comp3.Data().emitting().data());
+  EXPECT_EQ(comp1.Data().name(), comp3.Data().name());
+}
+
 /////////////////////////////////////////////////
 TEST_F(ComponentsTest, Performer)
 {
@@ -1313,6 +1406,115 @@ TEST_F(ComponentsTest, Pose)
   components::Pose comp3(math::Pose3d::Zero);
   comp3.Deserialize(istr);
   EXPECT_EQ(math::Pose3d(3, 2, 1, 0.3, 0.2, 0.1), comp3.Data());
+}
+
+//////////////////////////////////////////////////
+TEST_F(ComponentsTest, ReferenceModels)
+{
+  components::ReferenceModelsInfo linkInfo1;
+  linkInfo1.AddModel(1);
+  linkInfo1.AddModel(2);
+  linkInfo1.AddModel(3);
+  EXPECT_EQ(3u, linkInfo1.models.size());
+  EXPECT_TRUE(linkInfo1.models.find(1) != linkInfo1.models.end());
+  EXPECT_TRUE(linkInfo1.models.find(2) != linkInfo1.models.end());
+  EXPECT_TRUE(linkInfo1.models.find(3) != linkInfo1.models.end());
+
+  // test adding a model that already exists
+  linkInfo1.AddModel(1);
+  EXPECT_EQ(3u, linkInfo1.models.size());
+  EXPECT_TRUE(linkInfo1.models.find(1) != linkInfo1.models.end());
+
+  linkInfo1.RemoveModel(3);
+  EXPECT_EQ(2u, linkInfo1.models.size());
+  EXPECT_TRUE(linkInfo1.models.find(3) == linkInfo1.models.end());
+  // test removing a model that doesn't exist
+  linkInfo1.RemoveModel(5);
+  EXPECT_EQ(2u, linkInfo1.models.size());
+  EXPECT_TRUE(linkInfo1.models.find(5) == linkInfo1.models.end());
+
+  // linkInfo1 should now only reference models 1 and 2
+  EXPECT_EQ(2u, linkInfo1.models.size());
+  EXPECT_TRUE(linkInfo1.models.find(1) != linkInfo1.models.end());
+  EXPECT_TRUE(linkInfo1.models.find(2) != linkInfo1.models.end());
+
+  components::ReferenceModelsInfo linkInfo2;
+  linkInfo2.AddModel(1);
+  linkInfo2.AddModel(2);
+  linkInfo2.AddModel(3);
+  EXPECT_EQ(3u, linkInfo2.models.size());
+  EXPECT_TRUE(linkInfo2.models.find(1) != linkInfo2.models.end());
+  EXPECT_TRUE(linkInfo2.models.find(2) != linkInfo2.models.end());
+  EXPECT_TRUE(linkInfo2.models.find(3) != linkInfo2.models.end());
+
+  components::ReferenceModelsInfo linkInfo3;
+  linkInfo3.AddModel(1);
+  linkInfo3.AddModel(2);
+  EXPECT_EQ(2u, linkInfo3.models.size());
+  EXPECT_TRUE(linkInfo3.models.find(1) != linkInfo3.models.end());
+  EXPECT_TRUE(linkInfo3.models.find(2) != linkInfo3.models.end());
+
+  // create components
+  auto comp1 = components::ReferenceModels(linkInfo1);
+  auto comp2 = components::ReferenceModels(linkInfo2);
+  auto comp3 = components::ReferenceModels(linkInfo3);
+
+  // equality operators
+  EXPECT_NE(comp1, comp2);
+  EXPECT_FALSE(comp1 == comp2);
+  EXPECT_TRUE(comp1 != comp2);
+  EXPECT_NE(comp2, comp3);
+  EXPECT_FALSE(comp2 == comp3);
+  EXPECT_TRUE(comp2 != comp3);
+  EXPECT_EQ(comp1, comp3);
+  EXPECT_TRUE(comp1 == comp3);
+  EXPECT_FALSE(comp1 != comp3);
+
+  // stream operators
+  std::ostringstream ostr;
+  comp1.Serialize(ostr);
+  EXPECT_EQ("1 2 ", ostr.str());
+
+  std::istringstream istr(ostr.str());
+  components::ReferenceModels comp4;
+  comp4.Deserialize(istr);
+  EXPECT_EQ(comp1, comp4);
+
+  std::ostringstream ostr2;
+  comp2.Serialize(ostr2);
+  EXPECT_EQ("1 2 3 ", ostr2.str());
+
+  std::istringstream istr2(ostr2.str());
+  comp4.Deserialize(istr2);
+  EXPECT_EQ(comp2, comp4);
+}
+
+/////////////////////////////////////////////////
+TEST_F(ComponentsTest, Scene)
+{
+  auto data1 = sdf::Scene();
+  data1.SetAmbient(math::Color(1, 0, 1, 1));
+  data1.SetBackground(math::Color(1, 1, 0, 1));
+  data1.SetShadows(true);
+  data1.SetGrid(false);
+  data1.SetOriginVisual(true);
+
+  // Create components
+  auto comp11 = components::Scene(data1);
+
+  // TODO(anyone) Equality operators
+
+  // Stream operators
+  std::ostringstream ostr;
+  comp11.Serialize(ostr);
+  std::istringstream istr(ostr.str());
+  components::Scene comp3;
+  comp3.Deserialize(istr);
+  EXPECT_EQ(math::Color(1, 0, 1, 1), comp3.Data().Ambient());
+  EXPECT_EQ(math::Color(1, 1, 0, 1), comp3.Data().Background());
+  EXPECT_TRUE(comp3.Data().Shadows());
+  EXPECT_FALSE(comp3.Data().Grid());
+  EXPECT_TRUE(comp3.Data().OriginVisual());
 }
 
 /////////////////////////////////////////////////
@@ -1481,124 +1683,4 @@ TEST_F(ComponentsTest, World)
   std::istringstream istr("ignored");
   components::World comp3;
   comp3.Deserialize(istr);
-}
-
-/////////////////////////////////////////////////
-TEST_F(ComponentsTest, Scene)
-{
-  auto data1 = sdf::Scene();
-  data1.SetAmbient(math::Color(1, 0, 1, 1));
-  data1.SetBackground(math::Color(1, 1, 0, 1));
-  data1.SetShadows(true);
-  data1.SetGrid(false);
-  data1.SetOriginVisual(true);
-
-  // Create components
-  auto comp11 = components::Scene(data1);
-
-  // TODO(anyone) Equality operators
-
-  // Stream operators
-  std::ostringstream ostr;
-  comp11.Serialize(ostr);
-  std::istringstream istr(ostr.str());
-  components::Scene comp3;
-  comp3.Deserialize(istr);
-  EXPECT_EQ(math::Color(1, 0, 1, 1), comp3.Data().Ambient());
-  EXPECT_EQ(math::Color(1, 1, 0, 1), comp3.Data().Background());
-  EXPECT_TRUE(comp3.Data().Shadows());
-  EXPECT_FALSE(comp3.Data().Grid());
-  EXPECT_TRUE(comp3.Data().OriginVisual());
-}
-
-//////////////////////////////////////////////////
-TEST_F(ComponentsTest, ParticleEmitter)
-{
-  msgs::ParticleEmitter emitter1;
-  emitter1.set_name("emitter1");
-  emitter1.set_id(0);
-  emitter1.set_type(ignition::msgs::ParticleEmitter_EmitterType_BOX);
-  emitter1.mutable_size()->set_x(1);
-  emitter1.mutable_size()->set_y(2);
-  emitter1.mutable_size()->set_z(3);
-  emitter1.mutable_rate()->set_data(4.0);
-  emitter1.mutable_duration()->set_data(5.0);
-  emitter1.mutable_emitting()->set_data(false);
-  emitter1.mutable_particle_size()->set_x(0.1);
-  emitter1.mutable_particle_size()->set_y(0.2);
-  emitter1.mutable_particle_size()->set_z(0.3);
-  emitter1.mutable_lifetime()->set_data(6.0);
-  emitter1.mutable_min_velocity()->set_data(7.0);
-  emitter1.mutable_max_velocity()->set_data(8.0);
-  emitter1.mutable_color_start()->set_r(1.0);
-  emitter1.mutable_color_start()->set_g(0);
-  emitter1.mutable_color_start()->set_b(0);
-  emitter1.mutable_color_start()->set_a(0);
-  emitter1.mutable_color_end()->set_r(1.0);
-  emitter1.mutable_color_end()->set_g(1.0);
-  emitter1.mutable_color_end()->set_b(1.0);
-  emitter1.mutable_color_end()->set_a(0);
-  emitter1.mutable_scale_rate()->set_data(9.0);
-  emitter1.mutable_color_range_image()->set_data("path_to_texture");
-
-  msgs::ParticleEmitter emitter2;
-  emitter2.set_name("emitter2");
-  emitter2.set_id(1);
-  emitter2.set_type(ignition::msgs::ParticleEmitter_EmitterType_BOX);
-  emitter2.mutable_size()->set_x(1);
-  emitter2.mutable_size()->set_y(2);
-  emitter2.mutable_size()->set_z(3);
-  emitter2.mutable_rate()->set_data(4.0);
-  emitter2.mutable_duration()->set_data(5.0);
-  emitter2.mutable_emitting()->set_data(false);
-  emitter2.mutable_particle_size()->set_x(0.1);
-  emitter2.mutable_particle_size()->set_y(0.2);
-  emitter2.mutable_particle_size()->set_z(0.3);
-  emitter2.mutable_lifetime()->set_data(6.0);
-  emitter2.mutable_min_velocity()->set_data(7.0);
-  emitter2.mutable_max_velocity()->set_data(8.0);
-  emitter2.mutable_color_start()->set_r(1.0);
-  emitter2.mutable_color_start()->set_g(0);
-  emitter2.mutable_color_start()->set_b(0);
-  emitter2.mutable_color_start()->set_a(0);
-  emitter2.mutable_color_end()->set_r(1.0);
-  emitter2.mutable_color_end()->set_g(1.0);
-  emitter2.mutable_color_end()->set_b(1.0);
-  emitter2.mutable_color_end()->set_a(0);
-  emitter2.mutable_scale_rate()->set_data(9.0);
-  emitter2.mutable_color_range_image()->set_data("path_to_texture");
-
-  // Create components.
-  auto comp1 = components::ParticleEmitter(emitter1);
-  auto comp2 = components::ParticleEmitter(emitter2);
-
-  // Stream operators.
-  std::ostringstream ostr;
-  comp1.Serialize(ostr);
-
-  std::istringstream istr(ostr.str());
-  components::ParticleEmitter comp3;
-  comp3.Deserialize(istr);
-  EXPECT_EQ(comp1.Data().id(), comp3.Data().id());
-}
-
-//////////////////////////////////////////////////
-TEST_F(ComponentsTest, ParticleEmitterCmd)
-{
-  msgs::ParticleEmitter emitter1;
-  emitter1.set_name("emitter1");
-  emitter1.mutable_emitting()->set_data(true);
-
-  // Create components.
-  auto comp1 = components::ParticleEmitterCmd(emitter1);
-
-  // Stream operators.
-  std::ostringstream ostr;
-  comp1.Serialize(ostr);
-
-  std::istringstream istr(ostr.str());
-  components::ParticleEmitter comp3;
-  comp3.Deserialize(istr);
-  EXPECT_EQ(comp1.Data().emitting().data(), comp3.Data().emitting().data());
-  EXPECT_EQ(comp1.Data().name(), comp3.Data().name());
 }
