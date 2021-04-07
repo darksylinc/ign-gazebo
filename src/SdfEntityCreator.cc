@@ -404,9 +404,6 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Model *_model,
         canonicalLinkPair.second, modelEntity, *this->dataPtr->ecm);
     if (kNullEntity != canonicalLinkEntity)
     {
-      this->dataPtr->ecm->CreateComponent(
-          modelEntity, components::ModelCanonicalLink(canonicalLinkEntity));
-
       // Map this canonical link to the model. Since a link may be the
       // canonical link for multiple models (example: nested models), create
       // a component that completes this mapping if it doesn't already exist.
