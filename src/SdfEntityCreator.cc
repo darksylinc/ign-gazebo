@@ -407,17 +407,8 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Model *_model,
       // Map this canonical link to the model. Since a link may be the
       // canonical link for multiple models (example: nested models), create
       // a component that completes this mapping if it doesn't already exist.
-      if (!this->dataPtr->ecm->Component<components::ReferenceModels>(
-            canonicalLinkEntity))
-      {
-        components::ReferenceModelsInfo compInfo;
-        this->dataPtr->ecm->CreateComponent(canonicalLinkEntity,
-            components::ReferenceModels(compInfo));
-      }
-      auto refModelComp =
-        this->dataPtr->ecm->Component<components::ReferenceModels>(
-            canonicalLinkEntity);
-      refModelComp->Data().AddModel(modelEntity);
+      this->dataPtr->ecm->ComponentDefault<components::ReferenceModels>(
+          canonicalLinkEntity)->Data().AddModel(modelEntity);
     }
     else
     {
